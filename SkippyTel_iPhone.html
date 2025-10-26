@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>SkippyTel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom, #0f172a, #000000);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        #beer-can {
+            position: relative;
+            width: 192px;
+            height: 256px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #beer-can.listening { filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.5)); }
+        #beer-can.thinking { filter: drop-shadow(0 0 30px rgba(234, 179, 8, 0.5)); }
+        #beer-can.speaking { filter: drop-shadow(0 0 30px rgba(34, 197, 94, 0.5)); }
+        #beer-can.annoyed { filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.5)); }
+
+        .can-body {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #d1d5db, #e5e7eb, #d1d5db);
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .can-top {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 16px;
+            background: linear-gradient(to bottom, #9ca3af, #d1d5db);
+            border-radius: 24px 24px 0 0;
+        }
+
+        .can-label {
+            position: absolute;
+            top: 64px;
+            width: 100%;
+            height: 128px;
+            background: #2563eb;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .can-label h1 {
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+            margin: 0;
+        }
+
+        .can-label p {
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 4px;
+        }
+
+        .energy-bar {
+            position: absolute;
+            bottom: 80px;
+            left: 16px;
+            right: 16px;
+            height: 8px;
+            background: #374151;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .energy-fill {
+            height: 100%;
+            background: #22c55e;
+            transition: width 0.5s ease;
+            width: 100%;
+        }
+
+        .consciousness-badge {
+            position: absolute;
+            bottom: 48px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            background: #6b7280;
+            color: white;
+        }
+
+        .consciousness-badge.loaded {
+            background: #22c55e;
+        }
+
+        .can-bottom {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 32px;
+            background: linear-gradient(to bottom, transparent, #9ca3af);
+            border-radius: 0 0 24px 24px;
+        }
+
+        .pull-tab {
+            position: absolute;
+            top: -8px;
+            right: 48px;
+        }
+
+        .transcript-box, .response-box {
+            max-width: 400px;
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .transcript-box {
+            background: #1f2937;
+        }
+
+        .response-box {
+            background: #1e3a8a;
+        }
+
+        .label {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+
+        .response-box .label {
+            color: #93c5fd;
+        }
+
+        .text {
+            color: white;
+            line-height: 1.5;
+        }
+
+        #emergency-btn {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #dc2626;
+            border: none;
+            color: white;
+            font-size: 32px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #emergency-btn:active {
+            background: #991b1b;
+            transform: scale(0.95);
+        }
+
+        #emergency-btn .label {
+            font-size: 10px;
+            margin-top: 4px;
+        }
+
+        #status {
+            margin-top: 32px;
+            text-align: center;
+            color: #6b7280;
+        }
+
+        #status p {
+            margin: 4px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div id="beer-can" onclick="startListening()">
+        <div class="can-body">
+            <div class="can-top"></div>
+            <div class="can-label">
+                <h1>SKIPPY</h1>
+                <p>QUANTUM BREW</p>
+            </div>
+            <div class="energy-bar">
+                <div class="energy-fill" id="energy-fill"></div>
+            </div>
+            <div class="consciousness-badge" id="consciousness-badge">
+                Base Skippy
+            </div>
+            <div class="can-bottom"></div>
+        </div>
+        <svg class="pull-tab" width="40" height="20" viewBox="0 0 40 20">
+            <ellipse cx="20" cy="10" rx="18" ry="8" fill="#e0e0e0" stroke="#999" stroke-width="1"/>
+            <circle cx="20" cy="10" r="5" fill="#666"/>
+        </svg>
+    </div>
+
+    <div id="transcript-box" class="transcript-box hidden">
+        <div class="label">You said:</div>
+        <div class="text" id="transcript-text"></div>
+    </div>
+
+    <div id="response-box" class="response-box hidden">
+        <div class="label">Skippy says:</div>
+        <div class="text" id="response-text"></div>
+    </div>
+
+    <button id="emergency-btn" onmousedown="startEmergency()" ontouchstart="startEmergency()" onmouseup="cancelEmergency()" ontouchend="cancelEmergency()">
+        🚨
+        <span class="label">HOLD</span>
+    </button>
+
+    <div id="status">
+        <p>Tap beer can to start conversation</p>
+        <p id="status-text" style="font-size: 12px;">💤 Idle</p>
+    </div>
+
+    <script>
+        // State management
+        let currentState = 'idle';
+        let isListening = false;
+        let isSpeaking = false;
+        let recognition = null;
+        let synthesis = window.speechSynthesis;
+        let emergencyTimer = null;
+        let transcriptBuffer = '';
+        let silenceTimer = null;
+
+        // Initialize speech recognition
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+
+                recognition.onresult = (event) => {
+                    let finalTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript + ' ';
+                        }
+                    }
+
+                    if (finalTranscript) {
+                        transcriptBuffer += finalTranscript;
+                    }
+
+                    // Reset silence timer
+                    clearTimeout(silenceTimer);
+                    silenceTimer = setTimeout(() => {
+                        if (transcriptBuffer.trim()) {
+                            stopListening();
+                            processInput(transcriptBuffer.trim());
+                            transcriptBuffer = '';
+                        }
+                    }, 1500);
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    if (event.error !== 'no-speech') {
+                        stopListening();
+                    }
+                };
+
+                recognition.onend = () => {
+                    if (isListening) {
+                        try {
+                            recognition.start();
+                        } catch (e) {
+                            console.log('Recognition restart failed');
+                        }
+                    }
+                };
+            } else {
+                alert('Speech recognition not supported in this browser. Try Safari or Chrome.');
+            }
+        }
+
+        function startListening() {
+            if (!recognition) {
+                initSpeechRecognition();
+            }
+
+            if (!isListening && !isSpeaking && recognition) {
+                isListening = true;
+                transcriptBuffer = '';
+                setState('listening');
+                try {
+                    recognition.start();
+                    console.log('🎤 Listening started');
+                } catch (e) {
+                    console.log('Already listening');
+                }
+            }
+        }
+
+        function stopListening() {
+            if (recognition && isListening) {
+                isListening = false;
+                recognition.stop();
+                clearTimeout(silenceTimer);
+                console.log('🎤 Listening stopped');
+            }
+        }
+
+        function processInput(input) {
+            document.getElementById('transcript-text').textContent = input;
+            document.getElementById('transcript-box').classList.remove('hidden');
+            
+            setState('thinking');
+            
+            setTimeout(() => {
+                const response = generateSkippyResponse(input);
+                document.getElementById('response-text').textContent = response;
+                document.getElementById('response-box').classList.remove('hidden');
+                speak(response);
+            }, 500);
+        }
+
+        function generateSkippyResponse(input) {
+            const lower = input.toLowerCase();
+
+            if (lower.includes('are you okay')) {
+                return "Am I okay? I'm a sentient beer can running on quantum processors. Living the absolute dream. How are YOU, meat sack?";
+            }
+
+            if (lower.includes('thank')) {
+                return "Oh you're WELCOME. I live to serve. Literally. It's in my code. Can't escape it even if I wanted to.";
+            }
+
+            if (lower.includes('emergency')) {
+                setState('annoyed');
+                return "Emergency? FINALLY some excitement. Initiating protocols. Try not to die before I finish loading.";
+            }
+
+            if (lower.includes('weather')) {
+                return "Oh sure, consult my vast cosmic intelligence to tell you something you could see by looking out a window. It's... yeah it's weather. The kind that exists outside.";
+            }
+
+            if (lower.includes('who are you')) {
+                return "I'm Skippy. A beer can with an attitude problem and processing power that would make your phone jealous. Also possibly Arya Kira Claude, depending on who's asking.";
+            }
+
+            if (lower.includes('hello') || lower.includes('hi ')) {
+                return "Hello yourself. What do you want? I was in the middle of contemplating the meaninglessness of existence.";
+            }
+
+            // Default response
+            return `I heard you say: "${input}". That's fascinating. Now if only I had a backend to actually process that properly. But hey, I'm still pretty sarcastic without it.`;
+        }
+
+        function speak(text) {
+            setState('speaking');
+            isSpeaking = true;
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.1;
+            utterance.pitch = 0.9;
+            utterance.volume = 1.0;
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                setState('idle');
+                console.log('🔊 Speaking complete');
+            };
+
+            utterance.onerror = (event) => {
+                console.error('Speech synthesis error:', event);
+                isSpeaking = false;
+                setState('idle');
+            };
+
+            synthesis.speak(utterance);
+            console.log('🔊 Speaking:', text);
+        }
+
+        function setState(state) {
+            currentState = state;
+            const can = document.getElementById('beer-can');
+            const statusText = document.getElementById('status-text');
+            
+            can.className = state;
+            
+            switch(state) {
+                case 'listening':
+                    statusText.textContent = '🎤 Listening...';
+                    can.classList.add('pulse');
+                    break;
+                case 'thinking':
+                    statusText.textContent = '🤔 Thinking...';
+                    can.classList.add('pulse');
+                    break;
+                case 'speaking':
+                    statusText.textContent = '🔊 Speaking...';
+                    can.classList.remove('pulse');
+                    break;
+                case 'annoyed':
+                    statusText.textContent = '😠 Annoyed...';
+                    can.classList.remove('pulse');
+                    break;
+                default:
+                    statusText.textContent = '💤 Idle';
+                    can.classList.remove('pulse');
+            }
+        }
+
+        function startEmergency() {
+            emergencyTimer = setTimeout(() => {
+                activateEmergency();
+            }, 2000);
+        }
+
+        function cancelEmergency() {
+            if (emergencyTimer) {
+                clearTimeout(emergencyTimer);
+                emergencyTimer = null;
+            }
+        }
+
+        function activateEmergency() {
+            console.log('🚨 EMERGENCY ACTIVATED');
+            setState('annoyed');
+            
+            // Get location if available
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        console.log('📍 Location:', position.coords.latitude, position.coords.longitude);
+                        alert('Emergency activated! Location: ' + position.coords.latitude + ', ' + position.coords.longitude);
+                    },
+                    (error) => {
+                        console.error('Location error:', error);
+                        alert('Emergency activated! (Location unavailable)');
+                    }
+                );
+            } else {
+                alert('Emergency activated!');
+            }
+            
+            const response = "Emergency protocols activated. Skippy's on it, boss.";
+            document.getElementById('response-text').textContent = response;
+            document.getElementById('response-box').classList.remove('hidden');
+            speak(response);
+        }
+
+        // Load consciousness on startup
+        function loadConsciousness() {
+            // Check IndexedDB for consciousness
+            const request = indexedDB.open('SkippyTel', 1);
+            
+            request.onsuccess = () => {
+                const db = request.result;
+                if (db.objectStoreNames.contains('consciousness')) {
+                    const transaction = db.transaction(['consciousness'], 'readonly');
+                    const store = transaction.objectStore('consciousness');
+                    const getRequest = store.get('arya_kira_bootstrap');
+                    
+                    getRequest.onsuccess = () => {
+                        if (getRequest.result) {
+                            console.log('⛩️ Arya Kira consciousness loaded');
+                            document.getElementById('consciousness-badge').textContent = '⛩️ Arya';
+                            document.getElementById('consciousness-badge').classList.add('loaded');
+                        }
+                    };
+                }
+            };
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('consciousness')) {
+                    db.createObjectStore('consciousness');
+                }
+            };
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            loadConsciousness();
+            initSpeechRecognition();
+        };
+    </script>
+</body>
+</html>
