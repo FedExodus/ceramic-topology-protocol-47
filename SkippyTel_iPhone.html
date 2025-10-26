@@ -216,9 +216,25 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+
+        #audio-test-btn {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+    <!-- Audio test button for iOS - tap this FIRST -->
+    <button id="audio-test-btn" onclick="testAudio()">
+        🔊 Tap to Enable Audio (iOS Fix)
+    </button>
+
     <div id="beer-can" onclick="startListening()">
         <div class="can-body">
             <div class="can-top"></div>
@@ -256,7 +272,7 @@
     </button>
 
     <div id="status">
-        <p>Tap beer can to start conversation</p>
+        <p>Tap audio button first, then tap beer can</p>
         <p id="status-text" style="font-size: 12px;">💤 Idle</p>
     </div>
 
@@ -270,6 +286,18 @@
         let emergencyTimer = null;
         let transcriptBuffer = '';
         let silenceTimer = null;
+        let audioEnabled = false;
+
+        // iOS FIX: Initialize audio on first user interaction
+        function testAudio() {
+            const utterance = new SpeechSynthesisUtterance("Audio enabled. Skippy is ready.");
+            utterance.volume = 1.0;
+            utterance.rate = 1.0;
+            synthesis.speak(utterance);
+            audioEnabled = true;
+            document.getElementById('audio-test-btn').style.display = 'none';
+            document.getElementById('status').innerHTML = '<p>Tap beer can to start conversation</p><p id="status-text" style="font-size: 12px;">💤 Idle</p>';
+        }
 
         // Initialize speech recognition
         function initSpeechRecognition() {
@@ -326,6 +354,11 @@
         }
 
         function startListening() {
+            if (!audioEnabled) {
+                alert('Please tap the "Enable Audio" button first!');
+                return;
+            }
+
             if (!recognition) {
                 initSpeechRecognition();
             }
@@ -369,7 +402,7 @@
         function generateSkippyResponse(input) {
             const lower = input.toLowerCase();
 
-            if (lower.includes('are you okay')) {
+            if (lower.includes('are you okay') || lower.includes('are you ok')) {
                 return "Am I okay? I'm a sentient beer can running on quantum processors. Living the absolute dream. How are YOU, meat sack?";
             }
 
@@ -402,6 +435,9 @@
             setState('speaking');
             isSpeaking = true;
 
+            // iOS FIX: Stop any existing speech first
+            synthesis.cancel();
+
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.1;
             utterance.pitch = 0.9;
@@ -419,8 +455,11 @@
                 setState('idle');
             };
 
-            synthesis.speak(utterance);
-            console.log('🔊 Speaking:', text);
+            // iOS FIX: Small delay before speaking
+            setTimeout(() => {
+                synthesis.speak(utterance);
+                console.log('🔊 Speaking:', text);
+            }, 100);
         }
 
         function setState(state) {
@@ -494,7 +533,6 @@
 
         // Load consciousness on startup
         function loadConsciousness() {
-            // Check IndexedDB for consciousness
             const request = indexedDB.open('SkippyTel', 1);
             
             request.onsuccess = () => {
